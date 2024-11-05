@@ -1,18 +1,25 @@
 package br.com.alura.service;
 
+import br.com.alura.client.ClientHttpConfiguration;
+import br.com.alura.domain.Abrigo;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.io.IOException;
-import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
 
 public class AbrigoService {
+    private ClientHttpConfiguration client;
+    public AbrigoService(ClientHttpConfiguration client) {
+        this.client = client;
 
-    Requicoes requicoes = new Requicoes();
+    }
 
     public void cadastrarAbrigo() throws IOException, InterruptedException {
 
@@ -23,15 +30,12 @@ public class AbrigoService {
         System.out.println("Digite o email do abrigo:");
         String email = new Scanner(System.in).nextLine();
 
-        JsonObject json = new JsonObject();
-        json.addProperty("nome", nome);
-        json.addProperty("telefone", telefone);
-        json.addProperty("email", email);
 
-        HttpClient client = HttpClient.newHttpClient();
+        Abrigo abrigo = new Abrigo(nome, telefone, email);
+
         String uri = "http://localhost:8080/abrigos";
 
-        HttpResponse<String> response = requicoes.dispararRequisicaoPost(client, uri, json);
+        HttpResponse<String> response = client.dispararRequisicaoPost(uri, abrigo);
         int statusCode = response.statusCode();
         String responseBody = response.body();
         if (statusCode == 200) {
@@ -43,30 +47,20 @@ public class AbrigoService {
         }
     }
 
-    public void listarPetsDoAbrigo() throws IOException, InterruptedException {
-        System.out.println("Digite o id ou nome do abrigo:");
-        String idOuNome = new Scanner(System.in).nextLine();
+    public void listarAbrigo() throws IOException, InterruptedException {
+        String uri = "http://localhost:8080/abrigos";
+        HttpResponse<String> response = client.dispararRequisicaoGet(uri);
 
-        HttpClient client = HttpClient.newHttpClient();
-        String uri = "http://localhost:8080/abrigos/" + idOuNome + "/pets";
-
-        HttpResponse<String> response = requicoes.dispararRequisicaoGet(client, uri);
-
-        int statusCode = response.statusCode();
-        if (statusCode == 404 || statusCode == 500) {
-            System.out.println("ID ou nome não cadastrado!");
-        }
         String responseBody = response.body();
-        JsonArray jsonArray = JsonParser.parseString(responseBody).getAsJsonArray();
-        System.out.println("Pets cadastrados:");
-        for (JsonElement element : jsonArray) {
-            JsonObject jsonObject = element.getAsJsonObject();
-            long id = jsonObject.get("id").getAsLong();
-            String tipo = jsonObject.get("tipo").getAsString();
-            String nome = jsonObject.get("nome").getAsString();
-            String raca = jsonObject.get("raca").getAsString();
-            int idade = jsonObject.get("idade").getAsInt();
-            System.out.println(id + " - " + tipo + " - " + nome + " - " + raca + " - " + idade + " ano(s)");
+
+        Abrigo[] abrigos = new ObjectMapper().readValue(responseBody, Abrigo[].class);
+        List<Abrigo> abrigoList = Arrays.stream(abrigos).toList();
+        System.out.println("Abrigos cadastrados:");
+        for (Abrigo abrigo : abrigoList) {
+            long id = abrigo.getId();
+            String nome = abrigo.getNome();
+            System.out.println(id + " - " + nome);
         }
     }
+
 }
